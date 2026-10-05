@@ -1,1 +1,38 @@
+name: Tyzdenny report vypredanych produktov
 
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # kazdy pondelok 06:00 UTC
+  workflow_dispatch:        # moznost spustit rucne z tabu Actions
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests beautifulsoup4 lxml
+
+      - name: Spusti kontrolu
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          OUT_FILE: vypredane.csv
+        run: python check_soldout.py
+
+      # CSV zostane dostupne aj ako artifact (aj keby email zlyhal)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vypredane-report
+          path: vypredane.csv
+          if-no-files-found: ignore
